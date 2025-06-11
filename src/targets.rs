@@ -56,6 +56,7 @@ pub enum Architecture {
     /// See https://wiki.polygon.technology/docs/category/zk-assembly/
     #[cfg(feature = "arch_zkasm")]
     ZkAsm,
+    SuperH(SuperHArchitecture),
 }
 
 #[cfg_attr(feature = "rust_1_40", non_exhaustive)]
@@ -938,6 +939,7 @@ impl Architecture {
             | Wasm64
             | X86_64
             | X86_64h
+            | SuperH(SuperHArchitecture::Sh4)
             | XTensa
             | Clever(_) => Ok(Endianness::Little),
             Bpfeb
@@ -983,6 +985,7 @@ impl Architecture {
             | Pulley32
             | Pulley32be
             | Powerpc
+            | SuperH(_)
             | XTensa => Ok(PointerWidth::U32),
             AmdGcn
             | Bpfeb
@@ -1057,6 +1060,7 @@ impl Architecture {
             Clever(ver) => ver.into_str(),
             #[cfg(feature = "arch_zkasm")]
             ZkAsm => Cow::Borrowed("zkasm"),
+            SuperH(superh) => superh.into_str(),
         }
     }
 }
@@ -1302,6 +1306,44 @@ impl FromStr for Mips64Architecture {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[allow(missing_docs)]
+pub enum SuperHArchitecture {
+    Sh4,
+}
+
+impl fmt::Display for SuperHArchitecture {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use SuperHArchitecture::*;
+
+        match *self {
+            Sh4 => write!(f, "sh4"),
+        }
+    }
+}
+
+impl SuperHArchitecture {
+    pub fn into_str(self) -> Cow<'static, str> {
+        use SuperHArchitecture::*;
+        match self {
+            Sh4 => Cow::Borrowed("sh4"),
+        }
+    }
+}
+
+impl FromStr for SuperHArchitecture {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, ()> {
+        use SuperHArchitecture::*;
+
+        Ok(match s {
+            "sh4" => Sh4,
+            _ => return Err(()),
+        })
+    }
+}
+
 impl FromStr for Architecture {
     type Err = ();
 
@@ -1338,6 +1380,7 @@ impl FromStr for Architecture {
             "xtensa" => XTensa,
             #[cfg(feature = "arch_zkasm")]
             "zkasm" => ZkAsm,
+            "sh4" => SuperH(SuperHArchitecture::Sh4),
             _ => {
                 if let Ok(arm) = ArmArchitecture::from_str(s) {
                     Arm(arm)
@@ -1934,6 +1977,8 @@ mod tests {
             "xtensa-esp32s3-none-elf",
             #[cfg(feature = "arch_zkasm")]
             "zkasm-unknown-unknown",
+            "sh4-unknown-linux-gnu",
+            "sh4-unknown-none",
         ];
 
         for target in targets.iter() {
